@@ -1,39 +1,56 @@
+import { createHash } from "node:crypto";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import PostgresAdapter from "@auth/pg-adapter";
-import { Pool } from "pg";
 
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL ?? process.env.DATABASE_URL,
-});
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+/**
+ * Derive a deterministic UUID v5 from a Google account sub (subject) ID.
+ * This gives the backend a stable user ID without needing a database adapter.
+ */
+function googleSubToUUID5(sub: string): string {
+  const namespace = Buffer.from("6ba7b8119dad11d180b400c04fd430c8", "hex");
+  const hash = createHash("sha1").update(namespace).update(sub).digest();
+  const bytes = Buffer.from(hash.subarray(0, 16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x50; // version 5
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant RFC 4122
+  const hex = bytes.toString("hex");
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join("-");
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PostgresAdapter(pool),
-  session: { strategy: "jwt" },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
   ],
-  pages: {
-    signIn: "/login",
-  },
+  pages: { signIn: "/login" },
+  session: { strategy: "jwt" },
   callbacks: {
-    async signIn({ user }) {
-      const allowed = process.env.ALLOWED_EMAILS;
-      if (!allowed) return true;
-      const allowlist = allowed.split(",").map((e) => e.trim().toLowerCase());
-      return allowlist.includes(user.email?.toLowerCase() ?? "");
-    },
-    async jwt({ token, user }) {
-      if (user?.id) {
-        token.id = user.id;
+    jwt({ token, account, profile }) {
+      if (account && profile?.sub) {
+        token.id = googleSubToUUID5(profile.sub);
       }
       return token;
     },
-    async session({ session, token }) {
-      if (token.id) {
+    session({ session, token }) {
+      if (token.id && session.user) {
         session.user.id = token.id as string;
       }
       return session;
