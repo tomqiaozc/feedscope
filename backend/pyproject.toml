@@ -1,0 +1,54 @@
+[project]
+name = "feedscope-backend"
+version = "0.1.0"
+description = "Feedscope backend API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "httpx>=0.27.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "anthropic>=0.39.0",
+    "openai>=1.50.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=5.0.0",
+    "ruff>=0.7.0",
+    "mypy>=1.11.0",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "SIM"]
+ignore = [
+    "B008",   # function-call-in-default-argument — FastAPI Depends() pattern
+    "N815",   # mixedCase variable — Pydantic models matching external API schemas
+    "A002",   # shadowing built-in — id/type used in SQLAlchemy/Pydantic models
+    "A001",   # shadowing built-in — same as above
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
