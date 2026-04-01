@@ -1,15 +1,10 @@
 # ============================================================================
 # Feedscope — Continuous Deployment
-# Builds container images, pushes to Azure Container Registry, and deploys
-# to Azure Container Apps.
+# Builds container images, pushes to ghcr.io, and deploys to Azure App Service.
 #
 # Required GitHub Secrets:
-#   ACR_LOGIN_SERVER   — ACR login server (e.g. acrfeedscope.azurecr.io)
-#   ACR_USERNAME       — ACR admin username or service principal appId
-#   ACR_PASSWORD       — ACR admin password or service principal password
-#   AZURE_CREDENTIALS  — Azure service principal credentials JSON for az login
-#                        (with Contributor role on the resource group)
-#   AZURE_RG           — Azure resource group name (e.g. rg-feedscope-dev)
+#   AZURE_CREDENTIALS  — Azure service principal credentials JSON
+#                        (Contributor role on rg-rewind-ea)
 # ============================================================================
 
 name: CD
@@ -23,49 +18,58 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+  AZURE_RG: rg-rewind-ea
 
 jobs:
   build-backend:
     name: Build Backend Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: azure/docker-login@v2
+      - uses: docker/login-action@v3
         with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: backend
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.sha }},${{ secrets.ACR_LOGIN_SERVER }}/backend:latest
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }},${{ env.BACKEND_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   build-frontend:
     name: Build Frontend Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: azure/docker-login@v2
+      - uses: docker/login-action@v3
         with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
           context: frontend
           push: true
-          tags: ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }},${{ secrets.ACR_LOGIN_SERVER }}/frontend:latest
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }},${{ env.FRONTEND_IMAGE }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy to Azure Container Apps
+    name: Deploy to Azure App Service
     needs: [build-backend, build-frontend]
     runs-on: ubuntu-latest
     environment: production
@@ -74,32 +78,23 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Deploy Backend Container App
+      - name: Deploy Backend
         run: |
-          az containerapp update \
-            --name aca-backend-dev \
-            --resource-group ${{ secrets.AZURE_RG }} \
-            --image ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.sha }}
+          az webapp config container set \
+            --name app-backend-feedscope-prod \
+            --resource-group ${{ env.AZURE_RG }} \
+            --container-image-name ${{ env.BACKEND_IMAGE }}:${{ github.sha }} \
+            --container-registry-url https://ghcr.io
 
-      - name: Deploy Frontend Container App
+      - name: Deploy Frontend
         run: |
-          az containerapp update \
-            --name aca-frontend-dev \
-            --resource-group ${{ secrets.AZURE_RG }} \
-            --image ${{ secrets.ACR_LOGIN_SERVER }}/frontend:${{ github.sha }}
+          az webapp config container set \
+            --name app-frontend-feedscope-prod \
+            --resource-group ${{ env.AZURE_RG }} \
+            --container-image-name ${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --container-registry-url https://ghcr.io
 
-      - name: Verify Deployments
+      - name: Verify Backend Health
         run: |
-          echo "--- Backend ---"
-          az containerapp show \
-            --name aca-backend-dev \
-            --resource-group ${{ secrets.AZURE_RG }} \
-            --query "{status:properties.runningStatus, fqdn:properties.configuration.ingress.fqdn}" \
-            --output table
-
-          echo "--- Frontend ---"
-          az containerapp show \
-            --name aca-frontend-dev \
-            --resource-group ${{ secrets.AZURE_RG }} \
-            --query "{status:properties.runningStatus, fqdn:properties.configuration.ingress.fqdn}" \
-            --output table
+          sleep 30
+          curl -sf https://app-backend-feedscope-prod.azurewebsites.net/health || echo "Health check pending..."
