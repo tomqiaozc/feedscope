@@ -127,11 +127,9 @@ class TweAPIProvider:
 
         try:
             raw = await self._post("/v1/twitter/user/userRecentTweetsByFilter", body)
-        except UpstreamError as exc:
-            if exc.status_code == 400:
-                # Fallback to timeline
-                return await self.fetch_user_timeline(username, count=count, cursor=cursor)
-            raise
+        except UpstreamError:
+            # Fallback to timeline on any upstream error (400, 500, etc.)
+            return await self.fetch_user_timeline(username, count=count, cursor=cursor)
 
         parsed = TweAPITweetList.model_validate(raw)
         return [normalize_tweet(t) for t in parsed.data.items]
