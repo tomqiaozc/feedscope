@@ -10,6 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.db.engine import get_db_session
+from app.providers.base import (
+    AuthRequiredError,
+    ProviderError,
+    ProviderTimeoutError,
+    RateLimitError,
+    UpstreamError,
+)
 from app.routes.dashboard import router as dashboard_router
 from app.routes.explore import router as explore_router
 from app.routes.external import router as external_router
@@ -43,6 +50,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# --- Provider exception handlers ---
+
+
+@app.exception_handler(RateLimitError)
+async def rate_limit_handler(request, exc: RateLimitError):
+    headers = {}
+    if exc.retry_after:
+        headers["Retry-After"] = str(exc.retry_after)
+    return JSONResponse(
+        status_code=429,
+        content={"success": False, "error": str(exc)},
+        headers=headers,
+    )
+
+
+@app.exception_handler(AuthRequiredError)
+async def auth_required_handler(request, exc: AuthRequiredError):
+    return JSONResponse(status_code=401, content={"success": False, "error": str(exc)})
+
+
+@app.exception_handler(ProviderTimeoutError)
+async def timeout_handler(request, exc: ProviderTimeoutError):
+    return JSONResponse(
+        status_code=504,
+        content={"success": False, "error": "Provider request timed out"},
+    )
+
+
+@app.exception_handler(UpstreamError)
+async def upstream_handler(request, exc: UpstreamError):
+    return JSONResponse(status_code=502, content={"success": False, "error": str(exc)})
+
+
+@app.exception_handler(ProviderError)
+async def provider_error_handler(request, exc: ProviderError):
+    return JSONResponse(status_code=503, content={"success": False, "error": str(exc)})
 
 
 @app.get("/health")
