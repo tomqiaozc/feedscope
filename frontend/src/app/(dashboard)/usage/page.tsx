@@ -137,7 +137,7 @@ export default function UsagePage() {
       {creditsError && <ErrorBanner message={creditsError} />}
       {credits && (
         <div className="rounded-widget bg-secondary/50 p-4 fade-up-stagger-2">
-          <h2 className="text-sm font-medium mb-2">TweAPI Credits</h2>
+          <h2 className="text-sm font-medium mb-2">API Credits</h2>
           <div className="flex flex-wrap gap-6 text-sm">
             <div>
               <span className="text-muted-foreground">Used this period:</span>{" "}

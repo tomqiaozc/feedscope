@@ -63,7 +63,9 @@ def normalize_tweet(tweet: TATweet) -> Post:
         username=tweet.author.userName if tweet.author else "",
         display_name=tweet.author.name if tweet.author else None,
         profile_image_url=tweet.author.profilePicture if tweet.author else None,
-        is_verified=(tweet.author.isBlueVerified or tweet.author.isVerified) if tweet.author else False,
+        is_verified=(
+            (tweet.author.isBlueVerified or tweet.author.isVerified) if tweet.author else False
+        ),
     )
 
     media: list[MediaItem] = []
@@ -71,11 +73,13 @@ def normalize_tweet(tweet: TATweet) -> Post:
         for m in tweet.extendedEntities.media:
             url = m.media_url_https or m.url or m.expanded_url
             if url:
-                media.append(MediaItem(
-                    type=_media_type(m.type),
-                    url=url,
-                    preview_url=m.media_url_https,
-                ))
+                media.append(
+                    MediaItem(
+                        type=_media_type(m.type),
+                        url=url,
+                        preview_url=m.media_url_https,
+                    )
+                )
 
     metrics = PostMetrics(
         likes=tweet.likeCount,

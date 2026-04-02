@@ -123,7 +123,7 @@ export default function SettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-muted-foreground" />
-            <h2 className="text-sm font-medium">TweAPI Credentials</h2>
+            <h2 className="text-sm font-medium">Twitter API Credentials</h2>
           </div>
           {!editing && tweapiCred && (
             <Button variant="ghost" size="icon-sm" onClick={startEdit}>
@@ -270,7 +270,7 @@ export default function SettingsPage() {
           /* No credentials yet */
           <div className="mt-3 space-y-3">
             <p className="text-sm text-muted-foreground">
-              No TweAPI credentials configured. Add your API key or cookie to get started.
+              No Twitter API credentials configured. Add your API key to get started.
             </p>
             <Button variant="outline" size="sm" onClick={startEdit}>
               Add Credentials
@@ -286,9 +286,9 @@ export default function SettingsPage() {
       {/* Provider info */}
       <div className="rounded-widget bg-secondary/50 p-5 fade-up-stagger-3">
         <h2 className="text-sm font-medium text-muted-foreground">Provider</h2>
-        <p className="mt-2 text-sm font-medium">TweAPI</p>
+        <p className="mt-2 text-sm font-medium">TwitterAPI.io</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Twitter/X data access via TweAPI. This is the only supported provider in v1.
+          Twitter/X data access via TwitterAPI.io.
         </p>
       </div>
     </div>
