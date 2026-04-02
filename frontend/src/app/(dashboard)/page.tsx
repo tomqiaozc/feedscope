@@ -12,29 +12,24 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useBreadcrumbs } from "@/hooks/use-breadcrumbs";
-import { useFetch } from "@/hooks/use-fetch";
+import { useSwrFetch } from "@/hooks/use-swr-fetch";
 import { SectionSkeleton } from "@/components/ui/section-skeleton";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@/components/ui/button";
-import type { Watchlist } from "@/types/watchlist";
-import type { Group } from "@/types/group";
-import type { CreditsInfo, UsageSummary } from "@/types/usage";
 
 const crumbs = [{ label: "Dashboard" }];
 
-interface CredentialOut {
-  provider: string;
-  has_api_key: boolean;
-  has_cookie: boolean;
-}
-
-interface AiStatus {
-  provider_id?: string;
-  model?: string;
-}
-
-function formatDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+interface DashboardData {
+  credentials: {
+    provider: string;
+    has_api_key: boolean;
+    has_cookie: boolean;
+  }[];
+  ai: { provider_id?: string; model?: string };
+  watchlists: { id: number; name: string }[];
+  groups: { id: number; name: string }[];
+  usage: { date: string; endpoint: string; count: number }[];
+  credits: { remaining: number; total: number; reset_at: string | null };
 }
 
 function StatusCard({
@@ -49,7 +44,9 @@ function StatusCard({
   href?: string;
 }) {
   const inner = (
-    <div className={`rounded-widget bg-secondary/50 p-5 fade-up-stagger-${stagger}`}>
+    <div
+      className={`rounded-widget bg-secondary/50 p-5 fade-up-stagger-${stagger}`}
+    >
       <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
       <div className="mt-2">{children}</div>
     </div>
@@ -57,7 +54,10 @@ function StatusCard({
 
   if (href) {
     return (
-      <Link href={href} className="block transition-transform hover:scale-[1.01]">
+      <Link
+        href={href}
+        className="block transition-transform hover:scale-[1.01]"
+      >
         {inner}
       </Link>
     );
@@ -68,34 +68,19 @@ function StatusCard({
 export default function DashboardPage() {
   useBreadcrumbs(crumbs);
 
-  const {
-    data: creds,
-    loading: credsLoading,
-    error: credsError,
-  } = useFetch<CredentialOut[]>("settings/credentials");
+  const { data, loading, error } = useSwrFetch<DashboardData>("dashboard");
 
-  const {
-    data: ai,
-    loading: aiLoading,
-    error: aiError,
-  } = useFetch<AiStatus>("settings/ai");
-
-  const { data: watchlists, loading: wlLoading } = useFetch<Watchlist[]>("watchlists");
-  const { data: groups, loading: grpLoading } = useFetch<Group[]>("groups");
-  const { data: credits, loading: creditsLoading } = useFetch<CreditsInfo>("credits");
-
-  const usageEndpoint = useMemo(() => {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 7);
-    return `usage?date_from=${formatDate(from)}&date_to=${formatDate(to)}`;
-  }, []);
-  const { data: usage, loading: usageLoading } = useFetch<UsageSummary[]>(usageEndpoint);
+  const creds = data?.credentials;
+  const ai = data?.ai;
+  const watchlists = data?.watchlists;
+  const groups = data?.groups;
+  const credits = data?.credits;
 
   const tweapiCred = creds?.find((c) => c.provider === "tweapi");
   const hasCredentials = !!(tweapiCred?.has_api_key || tweapiCred?.has_cookie);
   const hasAi = !!(ai?.provider_id && ai?.model);
 
+  const usage = data?.usage;
   const totalApiCalls = useMemo(() => {
     if (!usage) return 0;
     return usage.reduce((sum, row) => sum + row.count, 0);
@@ -105,19 +90,19 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold fade-up-stagger-1">Dashboard</h1>
 
-      {(credsError || aiError) && (
-        <ErrorBanner message={credsError || aiError || "Failed to load status"} />
-      )}
+      {error && <ErrorBanner message={error || "Failed to load status"} />}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Credentials card */}
         <StatusCard title="Credentials" stagger={2} href="/settings">
-          {credsLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : hasCredentials ? (
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
               <CheckCircle2 className="h-4 w-4" />
-              <span className="text-sm font-medium">Twitter API configured</span>
+              <span className="text-sm font-medium">
+                Twitter API configured
+              </span>
             </div>
           ) : (
             <div className="space-y-2">
@@ -126,7 +111,9 @@ export default function DashboardPage() {
                 <span className="text-sm">Not configured</span>
               </div>
               <Link href="/settings">
-                <Button variant="outline" size="sm">Configure Credentials</Button>
+                <Button variant="outline" size="sm">
+                  Configure Credentials
+                </Button>
               </Link>
             </div>
           )}
@@ -134,13 +121,13 @@ export default function DashboardPage() {
 
         {/* AI Provider card */}
         <StatusCard title="AI Provider" stagger={3} href="/ai-settings">
-          {aiLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : hasAi ? (
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {ai.provider_id} / {ai.model}
+                {ai!.provider_id} / {ai!.model}
               </span>
             </div>
           ) : (
@@ -153,12 +140,14 @@ export default function DashboardPage() {
 
         {/* Watchlists card */}
         <StatusCard title="Watchlists" stagger={4} href="/watchlist">
-          {wlLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : (
             <div className="flex items-center gap-2">
               <List className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xl font-bold">{watchlists?.length ?? 0}</span>
+              <span className="text-xl font-bold">
+                {watchlists?.length ?? 0}
+              </span>
               <span className="text-sm text-muted-foreground">watchlists</span>
             </div>
           )}
@@ -166,12 +155,14 @@ export default function DashboardPage() {
 
         {/* Groups card */}
         <StatusCard title="Groups" stagger={5} href="/groups">
-          {grpLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : (
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xl font-bold">{groups?.length ?? 0}</span>
+              <span className="text-xl font-bold">
+                {groups?.length ?? 0}
+              </span>
               <span className="text-sm text-muted-foreground">groups</span>
             </div>
           )}
@@ -179,12 +170,14 @@ export default function DashboardPage() {
 
         {/* API Calls (7d) card */}
         <StatusCard title="API Calls (7d)" stagger={6} href="/usage">
-          {usageLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : (
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xl font-bold">{totalApiCalls.toLocaleString()}</span>
+              <span className="text-xl font-bold">
+                {totalApiCalls.toLocaleString()}
+              </span>
               <span className="text-sm text-muted-foreground">calls</span>
             </div>
           )}
@@ -192,12 +185,14 @@ export default function DashboardPage() {
 
         {/* Credits card */}
         <StatusCard title="Credits Remaining" stagger={7} href="/usage">
-          {creditsLoading ? (
+          {loading ? (
             <SectionSkeleton />
           ) : credits ? (
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xl font-bold">{credits.remaining.toLocaleString()}</span>
+              <span className="text-xl font-bold">
+                {credits.remaining.toLocaleString()}
+              </span>
               <span className="text-sm text-muted-foreground">remaining</span>
             </div>
           ) : (

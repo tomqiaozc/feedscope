@@ -106,6 +106,14 @@ async function doProxy(
       }
     });
 
+    // Allow browsers to cache successful GET responses briefly
+    if (request.method === "GET" && response.ok) {
+      responseHeaders.set(
+        "Cache-Control",
+        "private, max-age=5, stale-while-revalidate=30",
+      );
+    }
+
     const responseBody = await response.text();
     return new NextResponse(responseBody, {
       status: response.status,

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import get_current_user
 from app.config import settings
 from app.db.engine import get_db_session
+from app.routes.dashboard import router as dashboard_router
 from app.routes.explore import router as explore_router
 from app.routes.external import router as external_router
 from app.routes.groups import router as groups_router
@@ -66,6 +67,7 @@ async def me(user_id: str = Depends(get_current_user)):
     return {"user_id": user_id}
 
 
+app.include_router(dashboard_router)
 app.include_router(explore_router)
 app.include_router(external_router)
 app.include_router(groups_router)

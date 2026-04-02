@@ -186,7 +186,7 @@ def main():
     from app.main import app
 
     total = sum(1 for r in app.routes if hasattr(r, "methods"))
-    check("63 endpoints", total == 63, f"got {total}")
+    check("65 endpoints", total == 65, f"got {total}")
 
     # --- Summary ---
     print("\n" + "=" * 60)
