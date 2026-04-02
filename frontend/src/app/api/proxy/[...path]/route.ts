@@ -9,10 +9,12 @@ async function proxyRequest(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
-  // Read the body early, before any async ops that might consume it
+  // Read the body early, before any async ops that might consume it.
+  // Only forward non-empty bodies (null-body POSTs yield "").
   let body: string | undefined;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    body = await request.text();
+    const raw = await request.text();
+    if (raw) body = raw;
   }
 
   const { path } = await params;
