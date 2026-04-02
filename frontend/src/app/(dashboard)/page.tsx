@@ -22,13 +22,14 @@ import type { CreditsInfo, UsageSummary } from "@/types/usage";
 
 const crumbs = [{ label: "Dashboard" }];
 
-interface CredentialStatus {
-  api_key?: string;
-  cookie?: string;
+interface CredentialOut {
+  provider: string;
+  has_api_key: boolean;
+  has_cookie: boolean;
 }
 
 interface AiStatus {
-  provider?: string;
+  provider_id?: string;
   model?: string;
 }
 
@@ -71,7 +72,7 @@ export default function DashboardPage() {
     data: creds,
     loading: credsLoading,
     error: credsError,
-  } = useFetch<CredentialStatus>("settings/credentials");
+  } = useFetch<CredentialOut[]>("settings/credentials");
 
   const {
     data: ai,
@@ -91,8 +92,9 @@ export default function DashboardPage() {
   }, []);
   const { data: usage, loading: usageLoading } = useFetch<UsageSummary[]>(usageEndpoint);
 
-  const hasCredentials = !!(creds?.api_key || creds?.cookie);
-  const hasAi = !!(ai?.provider && ai?.model);
+  const tweapiCred = creds?.find((c) => c.provider === "tweapi");
+  const hasCredentials = !!(tweapiCred?.has_api_key || tweapiCred?.has_cookie);
+  const hasAi = !!(ai?.provider_id && ai?.model);
 
   const totalApiCalls = useMemo(() => {
     if (!usage) return 0;
@@ -138,7 +140,7 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {ai.provider} / {ai.model}
+                {ai.provider_id} / {ai.model}
               </span>
             </div>
           ) : (
