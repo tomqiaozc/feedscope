@@ -9,6 +9,12 @@ async function proxyRequest(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
+  // Read the body early, before any async ops that might consume it
+  let body: string | undefined;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    body = await request.text();
+  }
+
   const { path } = await params;
   const joinedPath = path.join("/");
 
@@ -34,7 +40,7 @@ async function proxyRequest(
     }
     headers.set("x-user-id", session.user.id);
 
-    return doProxy(request, joinedPath, headers);
+    return doProxy(request, joinedPath, headers, body);
   }
 
   // Health endpoint — proxy without auth
@@ -45,13 +51,14 @@ async function proxyRequest(
     if (value) headers.set(key, value);
   }
 
-  return doProxy(request, joinedPath, headers);
+  return doProxy(request, joinedPath, headers, body);
 }
 
 async function doProxy(
   request: NextRequest,
   joinedPath: string,
-  headers: Headers
+  headers: Headers,
+  body?: string
 ) {
   const targetPath =
     joinedPath === "health" ? "/health" : `/api/v1/${joinedPath}`;
@@ -68,8 +75,8 @@ async function doProxy(
   };
 
   // Forward body for non-GET/HEAD requests
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    fetchInit.body = await request.text();
+  if (body !== undefined) {
+    fetchInit.body = body;
   }
 
   try {
@@ -97,8 +104,8 @@ async function doProxy(
       }
     });
 
-    const body = await response.text();
-    return new NextResponse(body, {
+    const responseBody = await response.text();
+    return new NextResponse(responseBody, {
       status: response.status,
       headers: responseHeaders,
     });
