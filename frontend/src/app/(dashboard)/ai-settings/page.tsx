@@ -14,8 +14,8 @@ const crumbs = [
 ];
 
 interface AiSettings {
-  provider?: string;
-  api_key?: string;
+  provider_id?: string;
+  has_api_key?: boolean;
   model?: string;
   base_url?: string;
   sdk_type?: string;
@@ -45,8 +45,8 @@ export default function AiSettingsPage() {
 
   useEffect(() => {
     if (!existing) return;
-    if (existing.provider) setProvider(existing.provider);
-    if (existing.api_key) setApiKey(existing.api_key);
+    if (existing.provider_id) setProvider(existing.provider_id);
+    // api_key is not returned by GET (only has_api_key boolean) — keep form field empty
     if (existing.model) setModel(existing.model);
     if (existing.base_url) setBaseUrl(existing.base_url);
     if (existing.sdk_type) setSdkType(existing.sdk_type);
@@ -71,7 +71,7 @@ export default function AiSettingsPage() {
         "settings/ai/test",
         {
           method: "POST",
-          body: JSON.stringify({ provider, api_key: apiKey, model, base_url: baseUrl || undefined, sdk_type: sdkType }),
+          body: JSON.stringify({ provider_id: provider, api_key: apiKey, model, base_url: baseUrl || undefined, sdk_type: sdkType }),
         }
       );
       setStatus({ type: "success", message: `${result.provider} / ${result.model}: ${result.response_preview}` });
@@ -88,7 +88,7 @@ export default function AiSettingsPage() {
     try {
       await fetchApi("settings/ai", {
         method: "PUT",
-        body: JSON.stringify({ provider, api_key: apiKey, model, base_url: baseUrl || undefined, sdk_type: sdkType }),
+        body: JSON.stringify({ provider_id: provider, ...(apiKey ? { api_key: apiKey } : {}), model, base_url: baseUrl || undefined, sdk_type: sdkType }),
       });
       setStatus({ type: "success", message: "AI settings saved" });
     } catch (err) {
@@ -135,7 +135,7 @@ export default function AiSettingsPage() {
               type={showKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
+              placeholder={existing?.has_api_key ? "Leave blank to keep current" : "sk-..."}
               className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             <Button variant="outline" size="sm" onClick={() => setShowKey(!showKey)}>
@@ -187,11 +187,11 @@ export default function AiSettingsPage() {
 
       {/* Actions */}
       <div className="flex gap-3">
-        <Button variant="outline" onClick={handleTest} disabled={testing || !apiKey}>
+        <Button variant="outline" onClick={handleTest} disabled={testing || (!apiKey && !existing?.has_api_key)}>
           {testing && <LoadingSpinner className="mr-2" />}
           Test Connection
         </Button>
-        <Button onClick={handleSave} disabled={saving || !apiKey}>
+        <Button onClick={handleSave} disabled={saving || (!apiKey && !existing?.has_api_key)}>
           {saving && <LoadingSpinner className="mr-2" />}
           Save
         </Button>

@@ -131,17 +131,19 @@ async def update_ai_settings(
 
 @router.post("/ai/test")
 async def test_ai_connection(
+    body: AISettingsUpdate | None = None,
     user_id: str = Depends(get_current_user),
     session: AsyncSession = Depends(get_db_session),
 ):
+    # Use request body values if provided, fall back to saved settings
     repo = SettingsRepo(user_id, session)
     values = await repo.get_many("ai.")
 
-    provider_id = values.get("ai.provider_id")
-    api_key = values.get("ai.api_key")
-    model = values.get("ai.model")
-    base_url = values.get("ai.base_url")
-    sdk_type = values.get("ai.sdk_type")
+    provider_id = (body and body.provider_id) or values.get("ai.provider_id")
+    api_key = (body and body.api_key) or values.get("ai.api_key")
+    model = (body and body.model) or values.get("ai.model")
+    base_url = (body and body.base_url) or values.get("ai.base_url")
+    sdk_type = (body and body.sdk_type) or values.get("ai.sdk_type")
 
     if not api_key:
         raise HTTPException(status_code=400, detail="No AI API key configured")
