@@ -76,8 +76,7 @@ export default function DashboardPage() {
   const groups = data?.groups;
   const credits = data?.credits;
 
-  const tweapiCred = creds?.find((c) => c.provider === "tweapi");
-  const hasCredentials = !!(tweapiCred?.has_api_key || tweapiCred?.has_cookie);
+  const hasCredentials = !!creds?.some((c) => c.has_api_key || c.has_cookie);
   const hasAi = !!(ai?.provider_id && ai?.model);
 
   const usage = data?.usage;
