@@ -4,12 +4,33 @@ Multi-tenant social media analytics platform for monitoring Twitter/X accounts, 
 
 ## Features
 
-- **Watchlists** -- monitor Twitter accounts, fetch tweets via SSE streaming, tag and organize members
-- **AI Translation** -- translate tweets to Chinese with editorial commentary (Anthropic Claude, OpenAI, or custom providers)
-- **Explore** -- search tweets, browse user profiles, timelines, followers, bookmarks, and likes
-- **Groups** -- organize Twitter accounts into custom groups with batch import
-- **Webhook API** -- external API access with key rotation and usage tracking
-- **Usage Analytics** -- daily endpoint usage counters and TweAPI credit balance
+### Watchlists
+
+Create watchlists to track Twitter/X accounts. Add members with tags (e.g. "tech", "influencer") for filtering. The **Fetch** button pulls the latest tweets from all tracked members via real-time SSE streaming with a live progress bar showing member-by-member status -- cancellable mid-stream. Fetched posts display with media grids, engagement metrics (likes, retweets, replies, views), and auto-linkified URLs.
+
+### AI Translation
+
+Translate tweets to Chinese with editorial commentary using Anthropic Claude, OpenAI, or any OpenAI-compatible provider. Each translation produces three parts: the translation itself, an optional editorial/commentary note, and a quoted tweet translation. **Translate All** batch-translates untranslated posts via SSE streaming with per-post progress updates. Configure your AI provider, model, and API key in the AI Settings page with a built-in connection test.
+
+### Explore
+
+Search Twitter/X by keyword and browse results in a masonry grid. Click into any user's profile to see their avatar, bio, verified badge, follower stats, and six tabbed views: Tweets, Timeline, Replies, Highlights, Followers, and Following. Follower/Following lists are clickable for profile-to-profile navigation.
+
+### Groups
+
+Organize Twitter accounts into custom groups. Add members individually or **bulk-import from `.txt`/`.csv` files** -- usernames are parsed from comma or newline-separated values with `@` prefixes auto-stripped.
+
+### Webhook API
+
+Generate API keys for external programmatic access to Feedscope's Twitter data endpoints (search, user info, user tweets, bookmarks, tweet details). Keys support rotation (old key invalidated immediately) and are shown only once at creation with a copy-to-clipboard flow. Usage per key is tracked with last-used timestamps.
+
+### Usage Analytics
+
+View API call counts grouped by date and endpoint over a configurable date range. Summary cards show total calls, webhook calls, and remaining TwitterAPI.io credits with a visual progress bar. The breakdown table supports sortable columns and date-grouped subtotals.
+
+### Dashboard
+
+A single-page overview aggregating credentials status, AI provider config, watchlist/group counts, 7-day API call total, and credit balance -- all loaded in one request.
 
 ## Tech Stack
 
@@ -20,7 +41,7 @@ Multi-tenant social media analytics platform for monitoring Twitter/X accounts, 
 | Database | PostgreSQL 16 |
 | Auth | NextAuth v5 + Google OAuth, `@auth/pg-adapter` |
 | AI | Anthropic SDK, OpenAI SDK |
-| Twitter Data | TweAPI (proxied Twitter API) |
+| Twitter Data | TweAPI / TwitterAPI.io (configurable) |
 | Observability | OpenTelemetry + Azure Application Insights |
 | Deployment | Azure App Service, ghcr.io, GitHub Actions CI/CD |
 
@@ -118,7 +139,7 @@ feedscope/
 │   │   ├── config.py            # Pydantic settings
 │   │   ├── auth/                # Auth dependencies
 │   │   ├── db/                  # Models, engine, repositories
-│   │   ├── routes/              # 9 API route modules (~58 endpoints)
+│   │   ├── routes/              # 10 API route modules (~65 endpoints)
 │   │   ├── schemas/             # Pydantic request/response schemas
 │   │   ├── services/            # AI translation, SSE, prompts
 │   │   └── providers/           # Twitter data providers (TweAPI, mock)
@@ -133,7 +154,7 @@ feedscope/
 │   │   │   ├── api/             # NextAuth + backend proxy routes
 │   │   │   └── login/           # Login page
 │   │   ├── components/          # Domain, layout, and UI components
-│   │   ├── hooks/               # 7 custom React hooks
+│   │   ├── hooks/               # 8 custom React hooks
 │   │   ├── lib/                 # Auth config, API client, SSE parser
 │   │   └── types/               # TypeScript type definitions
 │   ├── e2e/                     # Playwright E2E tests
