@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     environment: str = "development"
     tweapi_base_url: str = "https://api.tweapi.io"
     tweapi_timeout_ms: int = 30000
+    twitter_provider: str = "twitterapi"  # "tweapi" or "twitterapi"
+    twitterapi_base_url: str = "https://api.twitterapi.io"
+    twitterapi_timeout_ms: int = 30000
     mock_provider: bool = False
     e2e_skip_auth: bool = False
 
